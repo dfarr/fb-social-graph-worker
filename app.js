@@ -9,26 +9,6 @@ var colors = require('colors');
 var amqp = require('amqplib/callback_api');
 
 
-///////////////////////////////////////////////////////////////////////////////
-// API
-///////////////////////////////////////////////////////////////////////////////
-
-var api = {
-    default: function(data, done) {
-        done({code: 404, text: 'Not Found'});
-    }
-};
-
-glob(__dirname + '/src/*.js', function(err, files) {
-    if(!err) {
-        files.forEach(function(file) {
-            console.log('✓ '.bold.green + path.relative(process.cwd(), file));
-            api[path.basename(file, '.js')] = require(file);
-        });
-    }
-});
-
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // AMQP
@@ -46,30 +26,64 @@ amqp.connect(process.env.AMQP, function(err, mq) {
 
     mq.createChannel(function(err, channel) {
 
-        channel.assertQueue('user', { durable: true });
+        channel.assertExchange('event', 'direct');
 
-        // channel.prefetch(1);
 
-        channel.consume('user', function(msg) {
+        ///////////////////////////////////////////////////////////////////////////////
+        // Queries
+        ///////////////////////////////////////////////////////////////////////////////
 
-            var args = JSON.parse(msg.content.toString());
+        glob('./src/queries/*.js', function(err, file) {
+            file = file || [];
+            file.forEach(function(f) {
 
-            var call = api[args.name] ? args.name : 'default';
+                var q = require(f);
 
-            api[call](args.user, args.data, function(err, res) {
+                channel.assertQueue('q.' + q.name, { durable: true });
 
-                var headers = {};
+                channel.consume('q.' + q.name, function(msg) {
+                    q.consume(msg, JSON.parse(msg.content.toString()), function(err, res) {
 
-                if(err) {
-                    headers.code = err.code || 500;
-                }
+                        var headers = {};
 
-                channel.sendToQueue(msg.properties.replyTo, new Buffer(JSON.stringify(err || res)), { headers: headers });
+                        if(err) {
+                            headers.code = err.code || 500;
+                        }
 
-                channel.ack(msg);
+                        channel.sendToQueue(msg.properties.replyTo, new Buffer(JSON.stringify(err || res)), { headers: headers });
+
+                        channel.ack(msg);
+
+                    });
+                });
 
             });
+        });
 
+
+        ///////////////////////////////////////////////////////////////////////////////
+        // Command
+        ///////////////////////////////////////////////////////////////////////////////
+
+        glob('./src/command/*.js', function(err, file) {
+            file = file || [];
+            file.forEach(function(f) {
+
+                var command = require(f);
+
+                var pattern = /^.+\/([^\/]+).js$/.exec(f);
+
+                command.forEach(function(c) {
+                    channel.assertQueue('c.' + c.name, {}, function(err, queue) {
+                        channel.bindQueue(queue.queue, 'event', 'c.' + pattern[1]);
+                        channel.consume(queue.queue, function(msg) {
+                            channel.ack(msg);
+                            c.consume(msg, JSON.parse(msg.content.toString()), channel);
+                        });
+                    });
+                });
+
+            });
         });
 
     });
