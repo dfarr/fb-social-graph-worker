@@ -6,25 +6,28 @@ var driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic(process.env.N
 
 module.exports = {
 
-    name: 'user.match',
+    name: 'user.find',
     consume: function(msg, arg, done) {
 
         var session = driver.session();
 
+        var page = parseInt(arg.data.page) || 0;
+
         session
-            .run('MATCH (u:USER { uuid: {user} }) MATCH (u)-[:Match { uuid: {topic} }]->(f) RETURN f', { user: arg.data.user, topic: arg.data.topic })
+            .run('MATCH (u:USER) RETURN u SKIP {page}*8 LIMIT 8', { page: page })
 
             .catch(function(err) {
+                console.log(err);
                 done({ code: 500 });
             })
 
             .then(function(result) {
 
-                var match = result.records.map(function(f) {
-                    return f.get('f').properties;
+                var user = result.records.map(function(u) {
+                    return u.get('u').properties;
                 });
 
-                done(null, match);
+                done(null, user);
 
                 session.close();
 
