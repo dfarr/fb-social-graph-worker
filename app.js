@@ -56,7 +56,7 @@ amqp.connect(process.env.AMQP, function(err, mq) {
 
             var call = api[args.name] ? args.name : 'default';
 
-            api[call](args.data, function(err, res) {
+            api[call](args.user, args.data, function(err, res) {
 
                 var headers = {};
 

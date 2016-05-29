@@ -9,7 +9,7 @@ var session = driver.session();
 module.exports = function(user, data, done) {
 
     session
-        .run('MERGE (u:USER { uuid: {user}, name: {name} }) RETURN u', { user: data.user, name: data.name })
+        .run('MATCH (u:USER { uuid: {user} }) MATCH (f:USER { uuid: {uuid} }) CREATE UNIQUE (u)-[:Friend]->(f) CREATE UNIQUE (f)-[:Friend]->(u) RETURN u', { user: data.user, uuid: data.uuid })
 
         .catch(function(err) {
             done({ code: 500 });
@@ -19,7 +19,7 @@ module.exports = function(user, data, done) {
 
             var user = result.records[0].get('u').properties;
 
-            done(null, { uuid: user.uuid, name: user.name });
+            done(null, { user: user.uuid });
 
         });
 
