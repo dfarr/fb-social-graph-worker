@@ -58,37 +58,34 @@ module.exports = {
                 channel.bindExchange(c.name, 'event', c.name);
 
                 // forward to handlers
-                channel.assertQueue(c.name, {}, function(err, queue) {
+                channel.assertQueue('c.' + c.name);
 
-                    channel.bindQueue(queue.queue, c.name, c.name);
+                channel.bindQueue('c.' + c.name, c.name, c.name);
 
-                    channel.consume(queue.queue, function(msg) {
+                channel.consume('c.' + c.name, function(msg) {
 
-                        channel.publish(c.name + '.handlers', '', msg.content);
+                    channel.publish(c.name + '.handlers', '', msg.content);
 
-                        channel.sendToQueue(msg.properties.replyTo, new Buffer('{"ok":true}'));
+                    channel.sendToQueue(msg.properties.replyTo, new Buffer('{"ok":true}'));
 
-                        channel.ack(msg);
-
-                    });
+                    channel.ack(msg);
 
                 });
+
 
                 // declare handlers
                 c.handlers.forEach(function(h) {
 
-                    channel.assertQueue(h.name, {}, function(err, queue) {
+                    channel.assertQueue('c.' + h.name);
 
-                        channel.bindQueue(queue.queue, c.name + '.handlers');
+                    channel.bindQueue('c.' + h.name, c.name + '.handlers');
 
-                        channel.consume(queue.queue, function(msg) {
+                    channel.consume('c.' + h.name, function(msg) {
 
-                            // TODO: parse in try/catch
+                        // TODO: parse in try/catch
 
-                            h.consume(msg, JSON.parse(msg.content.toString()), function(err, res) {
-                                done(err, res, msg);
-                            });
-
+                        h.consume(msg, JSON.parse(msg.content.toString()), function(err, res) {
+                            done(err, res, msg);
                         });
 
                     });
