@@ -1,13 +1,8 @@
 
-var glob = require('glob');
-var path = require('path');
-var uuid = require('node-uuid');
-var merge = require('merge');
-var async = require('async');
 var colors = require('colors');
+var glob = require('glob');
 
 var amqp = require('amqplib/callback_api');
-
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -26,38 +21,25 @@ amqp.connect(process.env.AMQP, function(err, mq) {
 
     mq.createChannel(function(err, channel) {
 
-        channel.assertExchange('event', 'direct');
+        var utils = require('./src/utils');
 
 
         ///////////////////////////////////////////////////////////////////////////////
         // Queries
         ///////////////////////////////////////////////////////////////////////////////
 
-        glob('./src/queries/*.js', function(err, file) {
-            file = file || [];
-            file.forEach(function(f) {
+        utils.q(mq, channel, __dirname + '/src/queries/*.js', function(err, res, msg) {
 
-                var q = require(f);
+            var headers = {};
 
-                channel.assertQueue('q.' + q.name, { durable: true });
+            if(err) {
+                headers.code = err.code || 500;
+            }
 
-                channel.consume('q.' + q.name, function(msg) {
-                    q.consume(msg, JSON.parse(msg.content.toString()), function(err, res) {
+            channel.sendToQueue(msg.properties.replyTo, new Buffer(JSON.stringify(err || res)), { headers: headers });
 
-                        var headers = {};
+            channel.ack(msg);
 
-                        if(err) {
-                            headers.code = err.code || 500;
-                        }
-
-                        channel.sendToQueue(msg.properties.replyTo, new Buffer(JSON.stringify(err || res)), { headers: headers });
-
-                        channel.ack(msg);
-
-                    });
-                });
-
-            });
         });
 
 
@@ -65,25 +47,14 @@ amqp.connect(process.env.AMQP, function(err, mq) {
         // Command
         ///////////////////////////////////////////////////////////////////////////////
 
-        glob('./src/command/*.js', function(err, file) {
-            file = file || [];
-            file.forEach(function(f) {
+        utils.c(mq, channel, __dirname + '/src/command/*.js', function(err, res, msg) {
 
-                var command = require(f);
+            if(err) {
+                return channel.nack(msg);
+            }
 
-                var pattern = /^.+\/([^\/]+).js$/.exec(f);
+            channel.ack(msg);
 
-                command.forEach(function(c) {
-                    channel.assertQueue('c.' + c.name, {}, function(err, queue) {
-                        channel.bindQueue(queue.queue, 'event', 'c.' + pattern[1]);
-                        channel.consume(queue.queue, function(msg) {
-                            channel.ack(msg);
-                            c.consume(msg, JSON.parse(msg.content.toString()), channel);
-                        });
-                    });
-                });
-
-            });
         });
 
     });
