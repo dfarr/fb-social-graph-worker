@@ -49,38 +49,17 @@ module.exports = {
 
                 var c = require(f);
 
-                channel.assertExchange('event', 'direct');
+                channel.assertExchange('event', 'topic');
 
-                channel.assertExchange(c.name, 'direct');
-
-                channel.assertExchange(c.name + '.handlers', 'fanout');
-
-                channel.bindExchange(c.name, 'event', c.name);
-
-                // forward to handlers
-                channel.assertQueue('c.' + c.name);
-
-                channel.bindQueue('c.' + c.name, c.name, c.name);
-
-                channel.consume('c.' + c.name, function(msg) {
-
-                    channel.publish(c.name + '.handlers', '', msg.content);
-
-                    channel.sendToQueue(msg.properties.replyTo, new Buffer('{"ok":true}'));
-
-                    channel.ack(msg);
-
-                });
-
-
-                // declare handlers
                 c.handlers.forEach(function(h) {
 
-                    channel.assertQueue('c.' + h.name);
+                    var name = 'c.' + h.name;
 
-                    channel.bindQueue('c.' + h.name, c.name + '.handlers');
+                    channel.assertQueue(name);
 
-                    channel.consume('c.' + h.name, function(msg) {
+                    channel.bindQueue(name, 'event', c.name);
+
+                    channel.consume(name, function(msg) {
 
                         // TODO: parse in try/catch
 
