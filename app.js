@@ -50,7 +50,11 @@ amqp.connect(process.env.AMQP, function(err, mq) {
         utils.c(mq, channel, __dirname + '/src/command/*.js', function(err, res, msg) {
 
             if(err) {
-                return channel.nack(msg);
+
+                // TODO: understand when to requeue failed messages
+
+                console.log(err);
+                return channel.nack(msg, false, false);
             }
 
             channel.ack(msg);
