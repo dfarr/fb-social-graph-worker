@@ -7,11 +7,11 @@ var driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic(process.env.N
 module.exports = {
 
     name: 'user.find',
-    consume: function(msg, arg, done) {
+    consume: function(args, done) {
 
         var session = driver.session();
 
-        var page = parseInt(arg.data.page) || 0;
+        var page = parseInt(args.data.page) || 0;
 
         session
             .run('MATCH (u:USER) RETURN u SKIP {page}*8 LIMIT 8', { page: page })

@@ -1,66 +1,82 @@
 
-var colors = require('colors');
 var glob = require('glob');
+var async = require('async');
+var colors = require('colors');
 
 var amqp = require('amqplib/callback_api');
 
 
-///////////////////////////////////////////////////////////////////////////////
-// AMQP
-///////////////////////////////////////////////////////////////////////////////
+async.series([
 
-amqp.connect(process.env.AMQP, function(err, mq) {
+    ///////////////////////////////////////////////////////////////////////////////
+    // AMQP
+    ///////////////////////////////////////////////////////////////////////////////
+
+    function(done) {
+
+        amqp.connect(process.env.AMQP, function(err, mq) {
+
+            if(err) {
+                console.log('✖ '.bold.red + 'failed to connect to rabbitmq');
+                done(err);
+            }
+
+            global.mq = mq;
+
+            console.log('✓ '.bold.green + 'connected to rabbitmq');
+            done();
+        });
+    },
+
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // Queries
+    ///////////////////////////////////////////////////////////////////////////////
+
+    function(done) {
+
+        var q = require('./src/q');
+
+        glob('./src/queries/*.js', function(err, file) {
+
+            file = file || [];
+
+            file.forEach(f => q(require(f)));
+
+            console.log('✓ '.bold.green + 'ready to handle queries');
+            done();
+        });
+    },
+
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // Command
+    ///////////////////////////////////////////////////////////////////////////////
+
+    function(done) {
+
+        var c = require('./src/c');
+
+        glob('./src/command/*.js', function(err, file) {
+
+            file = file || [];
+
+            file.forEach(f => c(require(f)));
+
+            console.log('✓ '.bold.green + 'ready to handle command');
+            done();
+        });
+    }
+
+], function(err) {
 
     if(err) {
-        console.log('✖ '.bold.red + 'failed to connect to rabbitmq');
+        console.log('✖ '.bold.red + 'failed to bootstrap worker');
+        console.log(err);
+
         process.exit(1);
     }
 
-    console.log('✓ '.bold.green + 'connected to rabbitmq');
-
-
-    mq.createChannel(function(err, channel) {
-
-        var utils = require('./src/utils');
-
-
-        ///////////////////////////////////////////////////////////////////////////////
-        // Queries
-        ///////////////////////////////////////////////////////////////////////////////
-
-        utils.q(mq, channel, __dirname + '/src/queries/*.js', function(err, res, msg) {
-
-            var headers = {};
-
-            if(err) {
-                headers.code = err.code || 500;
-            }
-
-            channel.sendToQueue(msg.properties.replyTo, new Buffer(JSON.stringify(err || res)), { headers: headers });
-
-            channel.ack(msg);
-
-        });
-
-
-        ///////////////////////////////////////////////////////////////////////////////
-        // Command
-        ///////////////////////////////////////////////////////////////////////////////
-
-        utils.c(mq, channel, __dirname + '/src/command/*.js', function(err, res, msg) {
-
-            if(err) {
-
-                // TODO: understand when to requeue failed messages
-
-                console.log(err);
-                return channel.nack(msg, false, false);
-            }
-
-            channel.ack(msg);
-
-        });
-
-    });
+    console.log('✓ '.bold.green + 'successfully bootstraped worker');
 
 });

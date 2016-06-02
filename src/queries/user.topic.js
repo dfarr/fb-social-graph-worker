@@ -7,12 +7,12 @@ var driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic(process.env.N
 module.exports = {
 
     name: 'user.topic',
-    consume: function(msg, arg, done) {
+    consume: function(args, done) {
 
         var session = driver.session();
 
         session
-            .run('MATCH (u:USER { uuid: {user} }) MATCH (u)-[t:Match]->() RETURN t', { user: arg.data.user })
+            .run('MATCH (u:USER { uuid: {user} }) MATCH (u)-[t:Match]->() RETURN t', { user: args.data.user })
 
             .catch(function(err) {
                 done({ code: 500 });

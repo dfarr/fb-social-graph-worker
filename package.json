@@ -1,5 +1,5 @@
 {
-  "name": "worker.user",
+  "name": "worker",
   "version": "0.0.0",
   "description": "",
   "main": "app.js",
@@ -9,13 +9,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bunchchat/worker.user.git"
+    "url": "git+https://github.com/bunchchat/worker.git"
   },
   "author": "Farr, David <dfarr219@gmail.com>",
   "bugs": {
-    "url": "https://github.com/bunchchat/worker.user/issues"
+    "url": "https://github.com/bunchchat/worker/issues"
   },
-  "homepage": "https://github.com/bunchchat/worker.user#readme",
+  "homepage": "https://github.com/bunchchat/worker#readme",
   "dependencies": {
     "amqplib": "^0.4.1",
     "async": "^2.0.0-rc.5",
