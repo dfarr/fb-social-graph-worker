@@ -16,8 +16,6 @@ module.exports = function(query) {
 
         query.consume(msg.content, function(err, res) {
 
-            console.log('GOT IT', msg.properties.replyTo);
-
             var headers = {};
 
             headers.code = err ? err.code : 200;

@@ -1,15 +1,10 @@
 
-var neo4j = require('neo4j-driver').v1;
-
-var driver = neo4j.driver(process.env.NEO4J_HOST, neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASS));
-
-
 module.exports = {
 
     name: 'user.find',
     consume: function(args, done) {
 
-        var session = driver.session();
+        var session = graph.session();
 
         var page = parseInt(args.data.page) || 0;
 
