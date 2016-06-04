@@ -2,27 +2,30 @@
 module.exports = {
 
     name: 'user.find',
-    consume: function(args, done) {
+
+    validate: {
+        page: { type: 'number', required: false }
+    },
+
+    consumer: function(user, data, done) {
 
         var session = graph.session();
 
-        var page = parseInt(args.data.page) || 0;
+        data.page = data.page || 0;
 
         session
-            .run('MATCH (u:USER) RETURN u SKIP {page}*8 LIMIT 8', { page: page })
+            .run('MATCH (u:User) RETURN u SKIP {data}.page * 8 LIMIT 8', { user: user, data: data })
 
             .catch(function(err) {
                 console.log(err);
                 done({ code: 500 });
             })
 
-            .then(function(result) {
+            .then(function(res) {
 
-                var user = result.records.map(function(u) {
-                    return u.get('u').properties;
-                });
+                var uuid = res.records.map(u => u.get('u').properties.uuid);
 
-                done(null, user);
+                done(null, uuid);
 
                 session.close();
 

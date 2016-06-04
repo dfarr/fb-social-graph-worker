@@ -2,24 +2,27 @@
 module.exports = {
 
     name: 'user.match',
-    consume: function(args, done) {
+
+    validate: {
+        topic: { type: 'string', required: true }
+    },
+
+    consumer: function(user, data, done) {
 
         var session = graph.session();
 
         session
-            .run('MATCH (u:USER { uuid: {user} }) MATCH (u)-[:Match { uuid: {topic} }]->(f) RETURN f', { user: args.data.user, topic: args.data.topic })
+            .run('MATCH (u:User { uuid: {user}.id }) MATCH (u)-[:Match { uuid: {data}.topic }]->(f) RETURN f', { user: user, data: data })
 
             .catch(function(err) {
                 done({ code: 500 });
             })
 
-            .then(function(result) {
+            .then(function(res) {
 
-                var match = result.records.map(function(f) {
-                    return f.get('f').properties;
-                });
+                var uuid = res.records.map(f => f.get('f').properties.uuid);
 
-                done(null, match);
+                done(null, uuid);
 
                 session.close();
 

@@ -2,24 +2,25 @@
 module.exports = {
 
     name: 'user.topic',
-    consume: function(args, done) {
+
+    validate: {},
+
+    consumer: function(user, data, done) {
 
         var session = graph.session();
 
         session
-            .run('MATCH (u:USER { uuid: {user} }) MATCH (u)-[t:Match]->() RETURN t', { user: args.data.user })
+            .run('MATCH (u:User { uuid: {user}.id }) MATCH (u)-[t:Match]->() RETURN t', { user: user, data: data })
 
             .catch(function(err) {
                 done({ code: 500 });
             })
 
-            .then(function(result) {
+            .then(function(res) {
 
-                var topic = result.records.map(function(t) {
-                    return t.get('t').properties;
-                });
+                var uuid = res.records.map(t => t.get('t').properties.uuid);
 
-                done(null, topic);
+                done(null, uuid);
 
                 session.close();
 

@@ -1,4 +1,6 @@
 
+var validator = require('validate');
+
 var ch = mq.createChannel();
 
 
@@ -12,9 +14,22 @@ module.exports = function(query) {
 
     ch.consume('q.' + query.name, function(msg) {
 
-        msg.content = JSON.parse(msg.content.toString());
+        var args = JSON.parse(msg.content.toString());
 
-        query.consume(msg.content, function(err, res) {
+        var user = args.user;
+
+        var data = args.data;
+
+        var errs = validator(query.validate).validate(data);
+
+        if(errs.length) {
+
+            ch.sendToQueue(msg.properties.replyTo, new Buffer('{"code":400,"text":"Bad Requst"}'), { headers: { code: 400 } });
+
+            return;
+        }
+
+        query.consumer(user, data, function(err, res) {
 
             var headers = {};
 

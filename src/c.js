@@ -1,4 +1,6 @@
 
+var validator = require('validate');
+
 var ch = mq.createChannel();
 
 
@@ -19,11 +21,23 @@ module.exports = function(command) {
         ch.bindQueue(name, 'event', command.name);
 
         var consumer = function(msg) {
-            msg.content = JSON.parse(msg.content.toString());
-            h.consume(msg);
+
+            var args = JSON.parse(msg.content.toString());
+
+            var user = args.user;
+
+            var data = args.data;
+
+            var errs = validator(command.validate).validate(data);
+
+            if(!errs.length) {
+                h.consumer(user, data);
+            }
+
+            ch.ack(msg);
         };
 
-        ch.consume(name, consumer, h.opts);
+        ch.consume(name, consumer);
 
     });
 
