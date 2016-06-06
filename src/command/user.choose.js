@@ -1,23 +1,23 @@
 
 module.exports = {
 
-    name: 'user.friend',
+    name: 'user.choose',
 
     validate: {
-        id: { type: 'string', required: true },
-        name: { type: 'string', required: false }
+        user: { type: 'string', required: true },
+        topic: { type: 'string', required: true }
     },
 
     handlers: [
 
         {
-            name: 'user.friend',
+            name: 'user.choose',
             consumer: function(user, data, done) {
-                
+        
                 var session = graph.session();
 
                 session
-                    .run('MATCH (u:User { uuid: {user}.id }) MATCH (f:User { uuid: {data}.id }) CREATE UNIQUE (u)-[:Friend]-(f)', { user: user, data: data })
+                    .run('MATCH (u:User { uuid: {user}.id }) MATCH (m:User { uuid: {data}.user }) CREATE UNIQUE (u)-[:Match { uuid: {data}.topic }]->(m)', { user: user, data: data })
 
                     .catch(done)
 

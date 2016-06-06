@@ -28,13 +28,24 @@ module.exports = function(command) {
 
             var data = args.data;
 
-            var errs = validator(command.validate).validate(data);
+            var errs = validator(command.validate).validate(data, { strip: false });
 
-            if(!errs.length) {
-                h.consumer(user, data);
+            if(errs.length) {
+                return ch.ack(msg); // nack?
             }
 
-            ch.ack(msg);
+            h.consumer(user, data, function(err, fx) {
+
+                if(err) {
+                    console.log(err); // nack??
+                }
+
+                (fx || []).map(fx => ({ name: fx.name, data: { user: user, data: fx.data } }))
+                          .map(fx => ({ name: fx.name, data: new Buffer(JSON.stringify(fx.data)) }))
+                          .forEach(fx => ch.publish('event', fx.name, fx.data));
+
+                ch.ack(msg);
+            });
         };
 
         ch.consume(name, consumer);
